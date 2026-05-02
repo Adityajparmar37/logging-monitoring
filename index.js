@@ -2,19 +2,28 @@ const express = require("express");
 const { doSomeHeavyTask } = require("./utils/tasks");
 const client = require("prom-client");
 const responseTime = require("response-time");
-const { createLogger, transport, log } = require("winston");
+const { createLogger } = require("winston");
 const LokiTransport = require("winston-loki");
+require("dotenv").config();
+
+// AI Integration
+const AIMonitor = require("./services/aiMonitor");
+const { router: aiRoutes, setAIMonitor } = require("./routes/aiRoutes");
 
 const options = {
   transports: [
     new LokiTransport({
-      host: "http://127.0.0.1:3100",
+      host: process.env.LOKI_HOST || "http://127.0.0.1:3100",
     }),
   ],
 };
 
 const logger = createLogger(options);
 const app = express();
+
+// Initialize AI Monitor
+const aiMonitor = new AIMonitor(process.env.LOKI_HOST);
+setAIMonitor(aiMonitor);
 const collectDefaultMetrics = client.collectDefaultMetrics;
 collectDefaultMetrics({ register: client.register });
 
@@ -85,6 +94,28 @@ app.get("/metrics", async (req, res) => {
   }
 });
 
+// Mount AI routes
+app.use("/ai", aiRoutes);
+
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
+  console.log("AI endpoints available at http://localhost:3000/ai/*");
+
+  // Start AI monitoring if API key is configured
+  if (
+    process.env.OPENROUTER_API_KEY &&
+    process.env.OPENROUTER_API_KEY !== "your_openrouter_api_key_here"
+  ) {
+    const intervalMinutes =
+      parseInt(process.env.ANALYSIS_INTERVAL_MINUTES) || 5;
+    aiMonitor.start(intervalMinutes);
+    console.log(
+      `AI Monitor started - analyzing every ${intervalMinutes} minutes`,
+    );
+  } else {
+    console.warn(
+      "⚠️  OPENROUTER_API_KEY not configured. AI features will be disabled.",
+    );
+    console.warn("   Set your API key in .env file to enable AI monitoring");
+  }
 });
