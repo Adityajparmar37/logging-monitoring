@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Monitor Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+            font-weight: 600;
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .api-button {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 15px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            text-align: left;
+        }
+
+        .api-button:hover {
+            border-color: #999;
+        }
+
+        .api-button:active {
+            background: #f9f9f9;
+        }
+
+        .api-button h3 {
+            color: #333;
+            margin-bottom: 6px;
+            font-size: 1em;
+            font-weight: 600;
+        }
+
+        .api-button p {
+            color: #666;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .result-container {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 25px;
+            display: none;
+        }
+
+        .result-container.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .result-header h2 {
+            color: #333;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .close-btn:hover {
+            background: #555;
+        }
+
+        .result-content {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 3px;
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+        }
+
+        .json-key {
+            color: #0066cc;
+            font-weight: bold;
+        }
+
+        .json-string {
+            color: #008000;
+        }
+
+        .json-number {
+            color: #ff6600;
+        }
+
+        .json-boolean {
+            color: #cc00cc;
+        }
+
+        .json-null {
+            color: #999;
+        }
+
+        .error {
+            background: #fff5f5;
+            border-left: 3px solid #d32f2f;
+            padding: 12px;
+            border-radius: 3px;
+            color: #c62828;
+        }
+
+        .success {
+            background: #f1f8f4;
+            border-left: 3px solid #388e3c;
+            padding: 12px;
+            border-radius: 3px;
+            color: #2e7d32;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 3px;
+            border-left: 3px solid #333;
+        }
+
+        .section h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .anomaly-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ff9800;
+        }
+
+        .anomaly-card.high {
+            border-left-color: #f44336;
+        }
+
+        .anomaly-card.medium {
+            border-left-color: #ff9800;
+        }
+
+        .anomaly-card.low {
+            border-left-color: #4caf50;
+        }
+
+        .anomaly-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .anomaly-type {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.05em;
+        }
+
+        .anomaly-description {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .anomaly-impact {
+            color: #666;
+            font-size: 0.9em;
+            font-style: italic;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .data-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+        }
+
+        .data-card-label {
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-card-value {
+            color: #333;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .collapsible {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .collapsible-header {
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .collapsible-header:hover {
+            background: #eeeeee;
+        }
+
+        .collapsible-content {
+            padding: 15px;
+            display: none;
+            border-top: 1px solid #ddd;
+        }
+
+        .collapsible-content.open {
+            display: block;
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s;
+        }
+
+        .toggle-icon.open {
+            transform: rotate(180deg);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin-right: 8px;
+        }
+
+        .badge-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+
+        .badge-warning {
+            background: #fff8e1;
+            color: #f57c00;
+            border: 1px solid #ffcc80;
+        }
+
+        .badge-danger {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+
+        .badge-info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #90caf9;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .spinner {
+            border: 3px solid #e0e0e0;
+            border-top: 3px solid #333;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>AI Monitor Dashboard</h1>
+
+        <div class="api-grid">
+            <button class="api-button" onclick="callAPI('/ai/status')">
+                <h3>Status</h3>
+                <p>Get AI Monitor status and configuration</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/ai/logs/analyze')">
+                <h3>Analyze Logs</h3>
+                <p>AI-powered log analysis</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/ai/logs/anomalies')">
+                <h3>Anomalies</h3>
+                <p>Detected log anomalies</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/ai/logs/summary')">
+                <h3>Log Summary</h3>
+                <p>Summary of last log analysis</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/ai/performance/analyze')">
+                <h3>Analyze Performance</h3>
+                <p>AI-powered performance analysis</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/ai/performance/recommendations')">
+                <h3>Recommendations</h3>
+                <p>Performance improvement suggestions</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/ai/performance/bottlenecks')">
+                <h3>Bottlenecks</h3>
+                <p>Identify performance bottlenecks</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/ai/performance/forecast')">
+                <h3>Forecast</h3>
+                <p>Performance predictions</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/ai/performance/history')">
+                <h3>History</h3>
+                <p>Performance history data</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/ai/analyze', 'POST')">
+                <h3>Run Analysis</h3>
+                <p>Trigger manual analysis</p>
+            </button>
+
+            <button class="api-button" onclick="callAPI('/metrics')">
+                <h3>Metrics</h3>
+                <p>Prometheus metrics</p>
+            </button>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="result-header">
+                <h2 id="resultTitle">Result</h2>
+                <button class="close-btn" onclick="closeResult()">Close</button>
+            </div>
+            <div class="result-content" id="resultContent">
+                <!-- Results will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function callAPI(endpoint, method = 'GET') {
+            const resultContainer = document.getElementById('resultContainer');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultContent = document.getElementById('resultContent');
+
+            // Show loading
+            resultContainer.classList.add('show');
+            resultTitle.textContent = `Loading ${endpoint}...`;
+            resultContent.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch(endpoint, { method });
+                const contentType = response.headers.get('content-type');
+
+                let data;
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    data = await response.text();
+                }
+
+                resultTitle.textContent = `${method} ${endpoint}`;
+
+                if (response.ok) {
+                    resultContent.innerHTML = formatResponse(data, endpoint);
+                } else {
+                    resultContent.innerHTML = `<div class="error"><strong>Error ${response.status}:</strong> ${JSON.stringify(data, null, 2)}</div>`;
+                }
+            } catch (error) {
+                resultTitle.textContent = 'Error';
+                resultContent.innerHTML = `<div class="error"><strong>Request Failed:</strong> ${error.message}</div>`;
+            }
+        }
+
+        function formatResponse(data, endpoint) {
+            // Handle plain text (like metrics)
+            if (typeof data === 'string') {
+                return `<pre>${escapeHtml(data)}</pre>`;
+            }
+
+            // Special formatting for different endpoints
+            if (endpoint.includes('/logs/analyze')) {
+                return formatLogAnalysis(data);
+            } else if (endpoint.includes('/performance/analyze')) {
+                return formatPerformanceAnalysis(data);
+            } else if (endpoint.includes('/performance/recommendations')) {
+                return formatRecommendations(data);
+            } else if (endpoint.includes('/performance/bottlenecks')) {
+                return formatBottlenecks(data);
+            } else if (endpoint.includes('/performance/forecast')) {
+                return formatForecast(data);
+            } else if (endpoint.includes('/logs/anomalies')) {
+                return formatAnomalies(data);
+            } else if (endpoint.includes('/status')) {
+                return formatStatus(data);
+            }
+
+            // Default JSON formatting
+            return `<pre>${syntaxHighlight(JSON.stringify(data, null, 2))}</pre>`;
+        }
+
+        function formatStatus(data) {
+            let html = '<div class="section">';
+            html += `<h3>System Status</h3>`;
+            html += `<p><strong>Status:</strong> <span class="badge badge-success">${data.status || 'Unknown'}</span></p>`;
+            html += `<p><strong>Uptime:</strong> ${data.uptime || 'N/A'}</p>`;
+            html += `<p><strong>Last Analysis:</strong> ${data.lastAnalysis || 'Never'}</p>`;
+            html += '</div>';
+            html += addCollapsibleRawData(data);
+            return html;
+        }
+
+        function formatLogAnalysis(data) {
+            let html = '<div class="section">';
+            html += '<h3>Analysis Summary</h3>';
+
+            // Data cards for key metrics
+            html += '<div class="data-grid">';
+
+            if (data.severity) {
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Severity Level</div>';
+                const severityClass = data.severity === 'high' ? 'badge-danger' :
+                    data.severity === 'medium' ? 'badge-warning' : 'badge-success';
+                html += `<div class="data-card-value"><span class="badge ${severityClass}">${data.severity.toUpperCase()}</span></div>`;
+                html += '</div>';
+            }
+
+            if (data.logCount) {
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Logs Analyzed</div>';
+                html += `<div class="data-card-value">${data.logCount}</div>`;
+                html += '</div>';
+            }
+
+            if (data.timestamp) {
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Analysis Time</div>';
+                html += `<div class="data-card-value" style="font-size: 1em;">${new Date(data.timestamp).toLocaleString()}</div>`;
+                html += '</div>';
+            }
+
+            html += '</div>';
+
+            if (data.summary) {
+                html += '<div style="margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px; border-left: 3px solid #333;">';
+                html += `<p style="line-height: 1.6; color: #333;">${escapeHtml(data.summary)}</p>`;
+                html += '</div>';
+            }
+
+            html += '</div>';
+
+            if (data.recommendations && data.recommendations.length > 0) {
+                html += '<div class="section">';
+                html += '<h3>Recommendations</h3>';
+                data.recommendations.forEach((rec, index) => {
+                    html += '<div style="background: #f9f9f9; padding: 12px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #4caf50;">';
+                    html += `<strong>${index + 1}.</strong> ${escapeHtml(typeof rec === 'string' ? rec : JSON.stringify(rec))}`;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+
+            html += addCollapsibleRawData(data);
+            return html;
+        }
+
+        function formatPerformanceAnalysis(data) {
+            let html = '<div class="section">';
+            html += '<h3>Performance Analysis</h3>';
+
+            // Data cards for key metrics
+            html += '<div class="data-grid">';
+
+            if (data.performanceScore !== undefined) {
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Performance Score</div>';
+                const scoreClass = data.performanceScore >= 80 ? 'badge-success' :
+                    data.performanceScore >= 60 ? 'badge-warning' : 'badge-danger';
+                html += `<div class="data-card-value"><span class="badge ${scoreClass}">${data.performanceScore}/100</span></div>`;
+                html += '</div>';
+            }
+
+            if (data.timestamp) {
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Analysis Time</div>';
+                html += `<div class="data-card-value" style="font-size: 1em;">${new Date(data.timestamp).toLocaleString()}</div>`;
+                html += '</div>';
+            }
+
+            html += '</div>';
+
+            if (data.summary) {
+                html += '<div style="margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px; border-left: 3px solid #333;">';
+                html += `<p style="line-height: 1.6; color: #333;">${escapeHtml(data.summary)}</p>`;
+                html += '</div>';
+            }
+
+            html += '</div>';
+
+            if (data.recommendations && data.recommendations.length > 0) {
+                html += '<div class="section">';
+                html += '<h3>Recommendations</h3>';
+                data.recommendations.forEach((rec, index) => {
+                    html += '<div style="background: #f9f9f9; padding: 12px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #4caf50;">';
+                    html += `<strong>${index + 1}.</strong> ${escapeHtml(typeof rec === 'string' ? rec : JSON.stringify(rec))}`;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+
+            if (data.bottlenecks && data.bottlenecks.length > 0) {
+                html += '<div class="section">';
+                html += '<h3>Identified Bottlenecks</h3>';
+                data.bottlenecks.forEach((bottleneck, index) => {
+                    html += '<div style="background: #fff3cd; padding: 12px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #ff9800;">';
+                    html += `<strong>${index + 1}.</strong> ${escapeHtml(typeof bottleneck === 'string' ? bottleneck : JSON.stringify(bottleneck))}`;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+
+            html += addCollapsibleRawData(data);
+            return html;
+        }
+
+        function formatRecommendations(data) {
+            let html = '';
+
+            if (data.performanceScore !== undefined) {
+                html += '<div class="section">';
+                html += '<h3>Current Performance</h3>';
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Performance Score</div>';
+                const scoreClass = data.performanceScore >= 80 ? 'badge-success' :
+                    data.performanceScore >= 60 ? 'badge-warning' : 'badge-danger';
+                html += `<div class="data-card-value"><span class="badge ${scoreClass}">${data.performanceScore}/100</span></div>`;
+                html += '</div>';
+                html += '</div>';
+            }
+
+            if (data.recommendations && data.recommendations.length > 0) {
+                html += '<div class="section">';
+                html += '<h3>Performance Recommendations</h3>';
+                data.recommendations.forEach((rec, index) => {
+                    html += '<div style="background: #f9f9f9; padding: 12px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #4caf50;">';
+                    html += `<strong>${index + 1}.</strong> ${escapeHtml(typeof rec === 'string' ? rec : JSON.stringify(rec))}`;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+
+            html += addCollapsibleRawData(data);
+            return html;
+        }
+
+        function formatBottlenecks(data) {
+            let html = '<div class="section">';
+            html += '<h3>Performance Bottlenecks</h3>';
+
+            if (data.bottlenecks && data.bottlenecks.length > 0) {
+                data.bottlenecks.forEach((bottleneck, index) => {
+                    html += '<div style="background: #fff3cd; padding: 15px; margin-bottom: 12px; border-radius: 4px; border-left: 4px solid #ff9800;">';
+
+                    if (typeof bottleneck === 'object') {
+                        html += `<div style="font-weight: 600; color: #333; margin-bottom: 8px;">${index + 1}. ${escapeHtml(bottleneck.name || bottleneck.type || 'Bottleneck')}</div>`;
+
+                        if (bottleneck.description) {
+                            html += `<div style="color: #555; margin-bottom: 6px;">${escapeHtml(bottleneck.description)}</div>`;
+                        }
+
+                        if (bottleneck.impact) {
+                            html += `<div style="color: #666; font-size: 0.9em;"><strong>Impact:</strong> ${escapeHtml(bottleneck.impact)}</div>`;
+                        }
+
+                        if (bottleneck.recommendation) {
+                            html += `<div style="color: #666; font-size: 0.9em; margin-top: 6px;"><strong>Recommendation:</strong> ${escapeHtml(bottleneck.recommendation)}</div>`;
+                        }
+                    } else {
+                        html += `<strong>${index + 1}.</strong> ${escapeHtml(bottleneck)}`;
+                    }
+
+                    html += '</div>';
+                });
+            } else {
+                html += '<p class="success">No significant bottlenecks detected</p>';
+            }
+
+            html += '</div>';
+            html += addCollapsibleRawData(data);
+            return html;
+        }
+
+        function formatForecast(data) {
+            let html = '<div class="section">';
+            html += '<h3>Performance Forecast</h3>';
+
+            html += '<div class="data-grid">';
+
+            if (data.trend) {
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Trend</div>';
+                const trendClass = data.trend === 'improving' ? 'badge-success' :
+                    data.trend === 'stable' ? 'badge-info' : 'badge-warning';
+                html += `<div class="data-card-value"><span class="badge ${trendClass}">${data.trend.toUpperCase()}</span></div>`;
+                html += '</div>';
+            }
+
+            if (data.confidence) {
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Confidence</div>';
+                html += `<div class="data-card-value">${data.confidence}%</div>`;
+                html += '</div>';
+            }
+
+            if (data.timestamp) {
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Forecast Time</div>';
+                html += `<div class="data-card-value" style="font-size: 1em;">${new Date(data.timestamp).toLocaleString()}</div>`;
+                html += '</div>';
+            }
+
+            html += '</div>';
+
+            if (data.forecast) {
+                html += '<div style="margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px; border-left: 3px solid #2196f3;">';
+                html += `<p style="line-height: 1.6; color: #333;">${escapeHtml(typeof data.forecast === 'string' ? data.forecast : JSON.stringify(data.forecast))}</p>`;
+                html += '</div>';
+            }
+
+            if (data.predictions && Array.isArray(data.predictions)) {
+                html += '<div style="margin-top: 15px;">';
+                html += '<h4 style="margin-bottom: 10px;">Predictions</h4>';
+                data.predictions.forEach((pred, index) => {
+                    html += '<div style="background: #e3f2fd; padding: 12px; margin-bottom: 10px; border-radius: 4px; border-left: 3px solid #2196f3;">';
+                    html += `<strong>${index + 1}.</strong> ${escapeHtml(typeof pred === 'string' ? pred : JSON.stringify(pred))}`;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+
+            html += '</div>';
+            html += addCollapsibleRawData(data);
+            return html;
+        }
+
+        function formatAnomalies(data) {
+            let html = '<div class="section">';
+            html += '<h3>Detected Anomalies</h3>';
+
+            if (data.count !== undefined) {
+                html += '<div class="data-grid">';
+                html += '<div class="data-card">';
+                html += '<div class="data-card-label">Total Count</div>';
+                const countClass = data.count === 0 ? 'badge-success' :
+                    data.count < 5 ? 'badge-warning' : 'badge-danger';
+                html += `<div class="data-card-value"><span class="badge ${countClass}">${data.count}</span></div>`;
+                html += '</div>';
+
+                if (data.timestamp) {
+                    html += '<div class="data-card">';
+                    html += '<div class="data-card-label">Last Updated</div>';
+                    html += `<div class="data-card-value" style="font-size: 1em;">${new Date(data.timestamp).toLocaleString()}</div>`;
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            if (data.anomalies && data.anomalies.length > 0) {
+                data.anomalies.forEach((anomaly, index) => {
+                    const severity = anomaly.severity || 'medium';
+                    html += `<div class="anomaly-card ${severity}">`;
+                    html += '<div class="anomaly-header">';
+                    html += `<span class="anomaly-type">${anomaly.type || 'Anomaly ' + (index + 1)}</span>`;
+                    if (anomaly.severity) {
+                        const severityClass = anomaly.severity === 'high' ? 'badge-danger' :
+                            anomaly.severity === 'medium' ? 'badge-warning' : 'badge-success';
+                        html += `<span class="badge ${severityClass}">${anomaly.severity.toUpperCase()}</span>`;
+                    }
+                    html += '</div>';
+
+                    if (anomaly.description) {
+                        html += `<div class="anomaly-description">${escapeHtml(anomaly.description)}</div>`;
+                    }
+
+                    if (anomaly.potentialImpact) {
+                        html += `<div class="anomaly-impact">Impact: ${escapeHtml(anomaly.potentialImpact)}</div>`;
+                    }
+
+                    if (anomaly.potentialCause) {
+                        html += `<div class="anomaly-impact">Potential Cause: ${escapeHtml(anomaly.potentialCause)}</div>`;
+                    }
+
+                    html += '</div>';
+                });
+            } else {
+                html += '<p class="success">No anomalies detected</p>';
+            }
+
+            html += '</div>';
+
+            // Collapsible raw data
+            html += '<div class="collapsible">';
+            html += '<div class="collapsible-header" onclick="toggleCollapsible(this)">';
+            html += '<span>View Raw JSON Data</span>';
+            html += '<span class="toggle-icon">▼</span>';
+            html += '</div>';
+            html += '<div class="collapsible-content">';
+            html += `<pre>${syntaxHighlight(JSON.stringify(data, null, 2))}</pre>`;
+            html += '</div>';
+            html += '</div>';
+
+            return html;
+        }
+
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function closeResult() {
+            document.getElementById('resultContainer').classList.remove('show');
+        }
+
+        function toggleCollapsible(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            content.classList.toggle('open');
+            icon.classList.toggle('open');
+        }
+
+        function addCollapsibleRawData(data) {
+            let html = '<div class="collapsible">';
+            html += '<div class="collapsible-header" onclick="toggleCollapsible(this)">';
+            html += '<span>View Raw JSON Data</span>';
+            html += '<span class="toggle-icon">▼</span>';
+            html += '</div>';
+            html += '<div class="collapsible-content">';
+            html += `<pre>${syntaxHighlight(JSON.stringify(data, null, 2))}</pre>`;
+            html += '</div>';
+            html += '</div>';
+            return html;
+        }
+    </script>
+</body>
+
+</html>

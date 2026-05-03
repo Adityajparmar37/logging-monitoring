@@ -4,6 +4,9 @@ const client = require("prom-client");
 const responseTime = require("response-time");
 const { createLogger } = require("winston");
 const LokiTransport = require("winston-loki");
+const cors = require("cors");
+
+// add this BEFORE your routes
 require("dotenv").config();
 
 // AI Integration
@@ -20,6 +23,12 @@ const options = {
 
 const logger = createLogger(options);
 const app = express();
+
+// Enable CORS first
+app.use(cors());
+
+// Serve static files from public directory
+app.use(express.static("public"));
 
 // Initialize AI Monitor
 const aiMonitor = new AIMonitor(process.env.LOKI_HOST);
@@ -49,13 +58,8 @@ app.use(
   }),
 );
 
-app.get("/", (req, res) => {
-  logger.info("Hello World endpoint was hit", {
-    method: req.method,
-    route: req.path,
-  });
-  res.send("Hello World!");
-});
+// Root path now serves the dashboard from public/index.html
+// app.get("/") is handled by express.static middleware
 
 app.get("/slow", async (req, res) => {
   try {
@@ -99,6 +103,7 @@ app.use("/ai", aiRoutes);
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
+  console.log("Dashboard: http://localhost:3000");
   console.log("AI endpoints available at http://localhost:3000/ai/*");
 
   // Start AI monitoring if API key is configured
